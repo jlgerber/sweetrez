@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shlex
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +15,7 @@ from .recipe import ContextSpec, Recipe
 from .store import TMP_PREFIX, SuiteStore, new_build_id
 
 RECIPE_COPY_NAME = "recipe.yaml"
+SHIM_DIR = ".rez-wrappers"  # sibling of bin/: rez finds the suite two levels up from a wrapper
 
 
 @dataclass(frozen=True)
@@ -76,6 +78,60 @@ def assemble_suite(recipe: Recipe, contexts: dict[str, ResolvedContext]) -> Suit
     return suite
 
 
+def _tool_aliases(suite: Suite) -> dict[tuple[str, str], str]:
+    """Map (context name, tool name) to the alias rez exposes in bin/."""
+    return {
+        (t["context_name"], t["tool_name"]): alias
+        for alias, t in suite.get_tools().items()
+    }
+
+
+def resolve_arg_shims(recipe: Recipe, suite: Suite) -> dict[str, tuple[str, ...]]:
+    """Map bin/ alias -> default args for every tool a recipe gives args to.
+
+    Raises BuildError if a tool with args has no wrapper in the suite: it is not
+    provided by a requested package, is hidden, or lost a cross-context conflict.
+    """
+    aliases = _tool_aliases(suite)
+    shims: dict[str, tuple[str, ...]] = {}
+    for spec in recipe.contexts:
+        for tool, args in spec.args.items():
+            alias = aliases.get((spec.name, tool))
+            if alias is None:
+                raise BuildError(
+                    f"{recipe.name}: args given for tool {tool!r} in context "
+                    f"{spec.name!r}, but it has no wrapper (not provided by a "
+                    "requested package, hidden, or shadowed by a conflict)"
+                )
+            shims[alias] = args
+    return shims
+
+
+def _write_arg_shims(suite_path: Path, shims: dict[str, tuple[str, ...]]) -> None:
+    """Move rez's wrapper aside and put a shell shim that prepends args in its place.
+
+    The real wrapper goes to <suite>/.rez-wrappers/<alias>, not under bin/,
+    because rez locates the suite as the grandparent of the wrapper file.
+    """
+    if not shims:
+        return
+    bin_dir = suite_path / "bin"
+    hidden = suite_path / SHIM_DIR
+    hidden.mkdir(exist_ok=True)
+    for alias, args in shims.items():
+        (bin_dir / alias).rename(hidden / alias)
+        quoted = " ".join(shlex.quote(a) for a in args)
+        script = (
+            "#!/bin/sh\n"
+            f"# sweetrez shim: runs rez's wrapper for {alias} with default arguments.\n"
+            'here=$(cd "$(dirname "$0")" && pwd)\n'
+            f'exec "$here/../{SHIM_DIR}/{alias}" {quoted} "$@"\n'
+        )
+        shim = bin_dir / alias
+        shim.write_text(script)
+        shim.chmod(0o755)
+
+
 def build_suite(
     recipe: Recipe,
     store: SuiteStore,
@@ -84,6 +140,7 @@ def build_suite(
 ) -> Path:
     contexts = resolve_contexts(recipe)
     suite = assemble_suite(recipe, contexts)
+    shims = resolve_arg_shims(recipe, suite)
     conflicts = suite.get_conflicting_aliases()
     if conflicts and on_warning:
         on_warning(f"{recipe.name}: conflicting tools hidden: {', '.join(sorted(conflicts))}")
@@ -101,6 +158,7 @@ def build_suite(
             ctx = suite.context(name)
             ctx._set_parent_suite(str(final), name)
             ctx.save(str(path / "contexts" / f"{name}.rxt"))
+        _write_arg_shims(path, shims)
         shutil.copyfile(recipe.source_path, path / RECIPE_COPY_NAME)
 
     return store.write_build(recipe.name, build_id, writer)

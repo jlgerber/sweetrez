@@ -149,3 +149,27 @@ def test_write_recipe_template_validates_name(tmp_path, name):
     with pytest.raises(RecipeError):
         write_recipe_template(tmp_path, name)
     assert not list(tmp_path.iterdir())
+
+
+def test_context_args_parse_to_tuples(tmp_path):
+    body = (
+        "name: a\ncontexts:\n  x:\n    requires: [foo]\n"
+        "    args:\n      foo: [--renderer, RenderMan]\n      foo-helper: []\n"
+    )
+    r = load_recipe(_write(tmp_path, body))
+    assert r.contexts[0].args == {"foo": ("--renderer", "RenderMan"), "foo-helper": ()}
+
+
+def test_context_args_default_empty(tmp_path):
+    r = load_recipe(_write(tmp_path, "name: a\ncontexts:\n  x:\n    requires: [foo]\n"))
+    assert r.contexts[0].args == {}
+
+
+@pytest.mark.parametrize(
+    "args_yaml",
+    ["args: [--x]", "args: {foo: --x}", "args: {foo: [1]}", "args: {foo: ['']}", "args: {'': [--x]}"],
+)
+def test_context_args_invalid_shapes(tmp_path, args_yaml):
+    body = f"name: a\ncontexts:\n  x:\n    requires: [foo]\n    {args_yaml}\n"
+    with pytest.raises(RecipeError, match="args"):
+        load_recipe(_write(tmp_path, body))

@@ -10,7 +10,7 @@ from .errors import RecipeError
 
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _RECIPE_KEYS = {"name", "description", "contexts"}
-_CONTEXT_KEYS = {"requires", "prefix", "suffix", "alias", "hide"}
+_CONTEXT_KEYS = {"requires", "prefix", "suffix", "alias", "hide", "args"}
 
 
 @dataclass(frozen=True)
@@ -21,6 +21,7 @@ class ContextSpec:
     suffix: str = ""
     alias: dict[str, str] = field(default_factory=dict)
     hide: tuple[str, ...] = ()
+    args: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -53,6 +54,17 @@ def _str(value, where: str, key: str) -> str:
     return value
 
 
+def _parse_args(value, where: str) -> dict[str, tuple[str, ...]]:
+    if not isinstance(value, dict):
+        raise RecipeError(f"{where}: 'args' must be a mapping of tool name to argument list")
+    result: dict[str, tuple[str, ...]] = {}
+    for tool, args in value.items():
+        if not isinstance(tool, str) or not tool:
+            raise RecipeError(f"{where}: 'args' keys must be non-empty tool names")
+        result[tool] = _str_list(args, where, f"args[{tool}]")
+    return result
+
+
 def _parse_context(name: str, data, where: str) -> ContextSpec:
     where = f"{where}: context '{name}'"
     if not isinstance(name, str) or not name:
@@ -81,6 +93,7 @@ def _parse_context(name: str, data, where: str) -> ContextSpec:
         suffix=_str(data.get("suffix", ""), where, "suffix"),
         alias=dict(alias),
         hide=_str_list(data.get("hide", []), where, "hide"),
+        args=_parse_args(data.get("args", {}), where),
     )
 
 
@@ -142,6 +155,7 @@ contexts:
     # suffix: ""             # appended to every tool name from this context
     # alias: {{tool: alias}}   # rename individual tools (requested packages only)
     # hide: [tool]           # do not expose these tools in the suite
+    # args: {{tool: [--flag]}}  # default arguments, placed before the user's
 """
 
 

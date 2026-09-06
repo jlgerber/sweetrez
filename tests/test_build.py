@@ -156,3 +156,68 @@ contexts:
     with pytest.raises(BuildError):
         build_suite(recipe, store)
     assert not (tmp_path / "root" / "demo").exists()
+
+
+ARGS_RECIPE = """\
+name: shimmed
+contexts:
+  a:
+    requires: [foo-1+]
+    prefix: a_
+    args:
+      foo: [--renderer, "Render Man"]
+"""
+
+
+def test_args_write_shim_in_front_of_rez_wrapper(package_repo, tmp_path, write_recipe):
+    from sweetrez.build import SHIM_DIR
+
+    recipe = load_recipe(write_recipe(tmp_path / "r", ARGS_RECIPE))
+    path = build_suite(recipe, SuiteStore(tmp_path / "root"), build_id="2026-01-01T00-00-00")
+    shim = path / "bin" / "a_foo"
+    real = path / SHIM_DIR / "a_foo"
+    assert shim.is_file() and real.is_file()
+    assert real.read_text().startswith("#!/usr/bin/env _rez_fwd")
+    text = shim.read_text()
+    assert text.startswith("#!/bin/sh")
+    assert "--renderer 'Render Man'" in text and '"$@"' in text
+    assert shim.stat().st_mode & 0o111
+    # tools without args keep rez's wrapper directly in bin/
+    assert (path / "bin" / "a_foo-helper").read_text().startswith("#!/usr/bin/env _rez_fwd")
+
+
+def test_shimmed_tool_runs_with_defaults_then_user_args(package_repo, tmp_path, write_recipe):
+    import os
+    import subprocess
+
+    recipe = load_recipe(write_recipe(tmp_path / "r", ARGS_RECIPE))
+    path = build_suite(recipe, SuiteStore(tmp_path / "root"), build_id="2026-01-01T00-00-00")
+    env = dict(os.environ, PATH="/opt/rez/bin/rez:" + os.environ["PATH"])
+    env.pop("REZ_PACKAGES_PATH", None)
+    result = subprocess.run(
+        [str(path / "bin" / "a_foo"), "--user", "x y"],
+        env=env, capture_output=True, text=True, timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["--renderer", "Render Man", "--user", "x y"]
+
+
+@pytest.mark.parametrize(
+    "tool,detail",
+    [("nothing", "nothing"), ("foo-helper", "foo-helper")],
+)
+def test_args_for_missing_or_hidden_tool_is_build_error(package_repo, tmp_path, write_recipe, tool, detail):
+    body = f"""\
+name: shimmed
+contexts:
+  a:
+    requires: [foo-1+]
+    hide: [foo-helper]
+    args:
+      {tool}: [--x]
+"""
+    recipe = load_recipe(write_recipe(tmp_path / "r", body))
+    store = SuiteStore(tmp_path / "root")
+    with pytest.raises(BuildError, match=detail):
+        build_suite(recipe, store)
+    assert store.builds("shimmed") == []

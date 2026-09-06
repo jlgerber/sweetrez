@@ -45,12 +45,20 @@ contexts:
     prefix: ""                 # optional; or suffix
     alias: {mayapy: maya_py}   # optional, tool -> alias
     hide: [some_tool]          # optional
+    args:                      # optional, default arguments per tool
+      usdview: [--renderer, RenderMan]
   houdini:
     requires: [houdini-20.5, usd-24]
 ```
 
-`alias` and `hide` only accept tools from packages listed in `requires`, not
-from their dependencies. That is a rez rule.
+`alias`, `hide`, and `args` only accept tools from packages listed in
+`requires`, not from their dependencies. That is a rez rule.
+
+`args` are placed in front of whatever the user types, so `usdview foo.usd`
+runs `usdview --renderer RenderMan foo.usd`. Rez's own `+` options (`+i`,
+`+p`, `+a`, ...) still work on a tool with default args. Under the hood the
+rez wrapper moves to `<build>/.rez-wrappers/<tool>` and a small shell shim
+takes its place in `bin/`.
 
 ## Commands
 
@@ -75,7 +83,8 @@ directory.
 
 ```
 <root>/lighting/
-  2026-09-06T14-32-10/   # rez suite: bin/, contexts/*.rxt, suite.yaml, recipe.yaml
+  2026-09-06T14-32-10/   # rez suite: bin/, contexts/*.rxt, suite.yaml, recipe.yaml,
+                         # plus .rez-wrappers/ for tools that have default args
   2026-09-01T09-00-00/
   current -> 2026-09-06T14-32-10
 ```
