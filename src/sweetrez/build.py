@@ -107,6 +107,23 @@ def resolve_arg_shims(recipe: Recipe, suite: Suite) -> dict[str, tuple[str, ...]
     return shims
 
 
+def shell_args(args: tuple[str, ...]) -> str:
+    """Quote default args for a POSIX shell.
+
+    A leading ``~`` (``~`` or ``~/...``) becomes ``"$HOME"`` so it expands for
+    whoever runs the tool; everything else is quoted literally.
+    """
+    parts = []
+    for a in args:
+        if a == "~":
+            parts.append('"$HOME"')
+        elif a.startswith("~/"):
+            parts.append('"$HOME"' + shlex.quote(a[1:]))
+        else:
+            parts.append(shlex.quote(a))
+    return " ".join(parts)
+
+
 def _write_arg_shims(suite_path: Path, shims: dict[str, tuple[str, ...]]) -> None:
     """Move rez's wrapper aside and put a shell shim that prepends args in its place.
 
@@ -120,27 +137,40 @@ def _write_arg_shims(suite_path: Path, shims: dict[str, tuple[str, ...]]) -> Non
     hidden.mkdir(exist_ok=True)
     for alias, args in shims.items():
         (bin_dir / alias).rename(hidden / alias)
-        quoted = " ".join(shlex.quote(a) for a in args)
+        quoted = shell_args(args)
         script = (
             "#!/bin/sh\n"
             f"# sweetrez shim: runs rez's wrapper for {alias} with default arguments.\n"
+            "# Set SWEETREZ_DEBUG=1 to print the exact command before it runs.\n"
             'here=$(cd "$(dirname "$0")" && pwd)\n'
-            f'exec "$here/../{SHIM_DIR}/{alias}" {quoted} "$@"\n'
+            f'target="$here/../{SHIM_DIR}/{alias}"\n'
+            f'set -- {quoted} "$@"\n'
+            'if [ -n "${SWEETREZ_DEBUG:-}" ]; then\n'
+            f'    printf \'sweetrez: exec %s %s\' "$target" "{quoted}" >&2\n'
+            f'    shift {len(args)}\n'
+            "    printf ' %s' \"$@\" >&2\n"
+            "    printf '\\n' >&2\n"
+            f'    set -- {quoted} "$@"\n'
+            "fi\n"
+            'exec "$target" "$@"\n'
         )
         shim = bin_dir / alias
         shim.write_text(script)
         shim.chmod(0o755)
-
 
 def build_suite(
     recipe: Recipe,
     store: SuiteStore,
     build_id: str | None = None,
     on_warning: Callable[[str], None] | None = None,
+    on_info: Callable[[str], None] | None = None,
 ) -> Path:
     contexts = resolve_contexts(recipe)
     suite = assemble_suite(recipe, contexts)
     shims = resolve_arg_shims(recipe, suite)
+    if on_info:
+        for alias, args in shims.items():
+            on_info(f"{alias}: default args {shell_args(args)}")
     conflicts = suite.get_conflicting_aliases()
     if conflicts and on_warning:
         on_warning(f"{recipe.name}: conflicting tools hidden: {', '.join(sorted(conflicts))}")

@@ -201,3 +201,22 @@ def test_new_refuses_existing_recipe(env, capsys):
 def test_new_rejects_bad_name(env, capsys):
     assert env.run("new", "current") == 1
     assert "reserved" in capsys.readouterr().err
+
+
+RECIPE_ARGS = """\
+name: delta
+contexts:
+  d:
+    requires: [foo-1+]
+    alias: {foo: foo_d}
+    args:
+      foo: [--root, ~/books]
+"""
+
+
+def test_build_lists_default_args_per_tool(env, write_recipe, capsys):
+    write_recipe(env.recipes, RECIPE_ARGS, "delta.yaml")
+    assert env.run("build", "delta") == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("built delta ")
+    assert out[1] == '  foo_d: default args --root "$HOME"/books'

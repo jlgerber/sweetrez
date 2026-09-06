@@ -221,3 +221,47 @@ contexts:
     with pytest.raises(BuildError, match=detail):
         build_suite(recipe, store)
     assert store.builds("shimmed") == []
+
+
+TILDE_RECIPE = """\
+name: tilde
+contexts:
+  a:
+    requires: [foo-1+]
+    args:
+      foo: [--root, ~/books, "~", "not~home", "a b"]
+"""
+
+
+def test_leading_tilde_in_args_expands_at_run_time(package_repo, tmp_path, write_recipe):
+    import os
+    import subprocess
+
+    recipe = load_recipe(write_recipe(tmp_path / "r", TILDE_RECIPE))
+    path = build_suite(recipe, SuiteStore(tmp_path / "root"), build_id="2026-01-01T00-00-00")
+    text = (path / "bin" / "foo").read_text()
+    assert '--root "$HOME"/books "$HOME" \'not~home\' \'a b\'' in text
+    env = dict(os.environ, PATH="/opt/rez/bin/rez:" + os.environ["PATH"], HOME="/fake/home")
+    env.pop("REZ_PACKAGES_PATH", None)
+    result = subprocess.run([str(path / "bin" / "foo")], env=env, capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["--root", "/fake/home/books", "/fake/home", "not~home", "a b"]
+
+
+def test_shim_prints_exec_line_when_debug_is_set(package_repo, tmp_path, write_recipe):
+    import os
+    import subprocess
+
+    recipe = load_recipe(write_recipe(tmp_path / "r", ARGS_RECIPE))
+    path = build_suite(recipe, SuiteStore(tmp_path / "root"), build_id="2026-01-01T00-00-00")
+    env = dict(os.environ, PATH="/opt/rez/bin/rez:" + os.environ["PATH"], SWEETREZ_DEBUG="1")
+    env.pop("REZ_PACKAGES_PATH", None)
+    result = subprocess.run([str(path / "bin" / "a_foo"), "x"], env=env, capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    line = result.stderr.splitlines()[0]
+    assert line.startswith("sweetrez: exec ")
+    assert line.endswith("/.rez-wrappers/a_foo --renderer 'Render Man' x")
+    # without the variable, nothing extra reaches stderr
+    env.pop("SWEETREZ_DEBUG")
+    quiet = subprocess.run([str(path / "bin" / "a_foo"), "x"], env=env, capture_output=True, text=True, timeout=60)
+    assert "sweetrez:" not in quiet.stderr

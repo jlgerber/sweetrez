@@ -60,17 +60,21 @@ def cmd_build(cfg: Config, args) -> int:
     store = SuiteStore(cfg.root)
     failed = False
     for recipe in _select_recipes(cfg, args.names, args.all):
+        notes: list[str] = []
         try:
             path = build_suite(
                 recipe,
                 store,
                 on_warning=lambda msg: print(f"warning: {msg}", file=sys.stderr),
+                on_info=notes.append,
             )
         except (SweetrezError, OSError, RezError) as e:
             failed = True
             print(f"error: {e}", file=sys.stderr)
             continue
         print(f"built {recipe.name} {path.name} -> {path}")
+        for note in notes:
+            print(f"  {note}")
     return 1 if failed else 0
 
 

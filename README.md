@@ -56,9 +56,17 @@ contexts:
 
 `args` are placed in front of whatever the user types, so `usdview foo.usd`
 runs `usdview --renderer RenderMan foo.usd`. Rez's own `+` options (`+i`,
-`+p`, `+a`, ...) still work on a tool with default args. Under the hood the
-rez wrapper moves to `<build>/.rez-wrappers/<tool>` and a small shell shim
-takes its place in `bin/`.
+`+p`, `+a`, ...) still work on a tool with default args. A leading `~` in an
+argument expands to the home of whoever runs the tool; everything else is
+passed literally. Under the hood the rez wrapper moves to
+`<build>/.rez-wrappers/<tool>` and a small shell shim takes its place in
+`bin/`. `build` lists each tool's default args, and setting
+`SWEETREZ_DEBUG=1` makes a shim print the exact command it runs to stderr:
+
+```
+$ SWEETREZ_DEBUG=1 usdview foo.usd
+sweetrez: exec /home/me/suites/lookdev/current/bin/../.rez-wrappers/usdview --renderer RenderMan foo.usd
+```
 
 ## Commands
 
