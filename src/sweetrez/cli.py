@@ -4,6 +4,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from rez.exceptions import RezError
+
 from . import __version__
 from .build import build_suite
 from .config import Config, load_config
@@ -56,7 +58,7 @@ def cmd_build(cfg: Config, args) -> int:
     for recipe in _select_recipes(cfg, args.names, args.all):
         try:
             path = build_suite(recipe, store)
-        except SweetrezError as e:
+        except (SweetrezError, OSError, RezError) as e:
             failed = True
             print(f"error: {e}", file=sys.stderr)
             continue
@@ -125,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         cfg = load_config(args.config)
         return _COMMANDS[args.command](cfg, args)
-    except SweetrezError as e:
+    except (SweetrezError, OSError, RezError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
 

@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from sweetrez.cli import main
@@ -59,6 +61,30 @@ def test_build_all_continues_past_failures(env, write_recipe, capsys):
     assert "built beta " in captured.out
     assert "broken" in captured.err and "foo-9+" in captured.err
     assert not (env.root / "broken").exists()
+
+
+def test_build_all_continues_past_os_error(env, capsys):
+    alpha_dir = env.root / "alpha"
+    alpha_dir.mkdir(parents=True)
+    os.chmod(alpha_dir, 0o500)
+    try:
+        assert env.run("build", "--all") == 1
+    finally:
+        os.chmod(alpha_dir, 0o700)
+    captured = capsys.readouterr()
+    assert "built beta " in captured.out
+    assert "error:" in captured.err
+
+
+def test_diff_against_non_suite_directory_is_clean_error(env, capsys):
+    assert env.run("build", "alpha") == 0
+    capsys.readouterr()
+    bogus_id = "2026-01-01T00-00-00"
+    (env.root / "alpha" / bogus_id).mkdir(parents=True)
+    assert env.run("diff", "alpha", bogus_id) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "error:" in captured.err
 
 
 def test_build_requires_name_or_all(env):
