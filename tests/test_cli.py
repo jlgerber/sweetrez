@@ -108,6 +108,7 @@ def test_diff_promoted_vs_newest(env, add_package, package_repo, capsys):
     env.run("build", "alpha")
     first = capsys.readouterr().out.split()[2]
     env.run("promote", "alpha")
+    capsys.readouterr()
     add_package(package_repo, "foo", "1.2.0", tools=["foo", "foo-helper"])
     import time; time.sleep(1.1)
     env.run("build", "alpha")
