@@ -10,7 +10,7 @@ from rez.suite import Suite
 
 from .errors import BuildError as _BuildError
 from .recipe import ContextSpec, Recipe
-from .store import SuiteStore, new_build_id
+from .store import TMP_PREFIX, SuiteStore, new_build_id
 
 RECIPE_COPY_NAME = "recipe.yaml"
 
@@ -82,6 +82,16 @@ def build_suite(recipe: Recipe, store: SuiteStore, build_id: str | None = None) 
 
     def writer(path: Path) -> None:
         suite.save(str(path))
+        # Suite.save() stamps each context with the tmp directory it was just
+        # written to (its own _set_parent_suite call, the same one rez uses
+        # internally); re-stamp and re-save with the final, post-rename path
+        # so the shipped .rxt files don't point at a directory that is about
+        # to disappear.
+        final = path.with_name(path.name.removeprefix(TMP_PREFIX))
+        for name in suite.context_names:
+            ctx = suite.context(name)
+            ctx._set_parent_suite(str(final), name)
+            ctx.save(str(path / "contexts" / f"{name}.rxt"))
         shutil.copyfile(recipe.source_path, path / RECIPE_COPY_NAME)
 
     return store.write_build(recipe.name, build_id, writer)

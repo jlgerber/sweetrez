@@ -1,4 +1,5 @@
 import pytest
+from rez.resolved_context import ResolvedContext
 from rez.suite import Suite
 
 from sweetrez.build import RECIPE_COPY_NAME, build_suite, resolve_contexts
@@ -70,6 +71,15 @@ def test_build_suite_writes_suite_and_recipe_copy(package_repo, tmp_path, write_
     assert _versions(suite.context("a")) == {"foo": "1.1.0"}
     assert sorted(p.name for p in (path / "bin").iterdir()) == ["a_foo", "barz"]
     assert sorted(p.name for p in (path / "contexts").iterdir()) == ["a.rxt", "b.rxt"]
+
+
+def test_saved_context_records_final_suite_path(package_repo, tmp_path, write_recipe):
+    recipe = load_recipe(write_recipe(tmp_path / "r", GOOD))
+    store = SuiteStore(tmp_path / "root")
+    path = build_suite(recipe, store, build_id="2026-01-01T00-00-00")
+    ctx = ResolvedContext.load(str(path / "contexts" / "a.rxt"))
+    assert ctx.parent_suite_path == str(path)
+    assert ctx.suite_context_name == "a"
 
 
 def test_build_suite_generates_build_id(package_repo, tmp_path, write_recipe):
