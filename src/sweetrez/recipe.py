@@ -91,6 +91,8 @@ def load_recipe(path: Path) -> Recipe:
     name = data.get("name")
     if not isinstance(name, str) or not NAME_RE.fullmatch(name):
         raise RecipeError(f"{where}: 'name' is required and must match {NAME_RE.pattern}")
+    if name == "current":
+        raise RecipeError(f"{where}: 'current' is a reserved name")
     description = _str(data.get("description", ""), where, "description")
     contexts = data.get("contexts")
     if not isinstance(contexts, dict) or not contexts:

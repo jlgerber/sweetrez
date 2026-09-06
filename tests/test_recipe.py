@@ -113,3 +113,9 @@ def test_context_name_with_path_separator_is_rejected(tmp_path):
     body = "name: a\ncontexts:\n  sub/dir:\n    requires: [foo]\n"
     with pytest.raises(RecipeError, match="context names"):
         load_recipe(_write(tmp_path, body))
+
+
+def test_recipe_named_current_is_rejected(tmp_path):
+    body = "name: current\ncontexts:\n  x:\n    requires: [foo]\n"
+    with pytest.raises(RecipeError, match="reserved"):
+        load_recipe(_write(tmp_path, body))
