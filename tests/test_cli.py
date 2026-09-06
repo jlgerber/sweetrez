@@ -56,6 +56,12 @@ def test_build_one(env, capsys):
     assert not (env.root / "alpha" / "current").exists()
 
 
+def test_build_duplicate_name_is_deduped(env, capsys):
+    assert env.run("build", "alpha", "alpha") == 0
+    out = capsys.readouterr().out
+    assert out.count("built alpha ") == 1
+
+
 def test_build_unknown_recipe(env, capsys):
     assert env.run("build", "nope") == 1
     assert "nope" in capsys.readouterr().err

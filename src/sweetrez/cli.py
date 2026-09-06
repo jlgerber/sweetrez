@@ -43,6 +43,7 @@ def _select_recipes(cfg: Config, names: list[str], build_all: bool) -> list[Reci
     recipes = load_recipes(cfg.recipe_dir)
     if build_all:
         return list(recipes.values())
+    names = list(dict.fromkeys(names))
     missing = [n for n in names if n not in recipes]
     if missing:
         raise RecipeError(
