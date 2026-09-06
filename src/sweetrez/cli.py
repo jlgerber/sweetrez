@@ -57,7 +57,11 @@ def cmd_build(cfg: Config, args) -> int:
     failed = False
     for recipe in _select_recipes(cfg, args.names, args.all):
         try:
-            path = build_suite(recipe, store)
+            path = build_suite(
+                recipe,
+                store,
+                on_warning=lambda msg: print(f"warning: {msg}", file=sys.stderr),
+            )
         except (SweetrezError, OSError, RezError) as e:
             failed = True
             print(f"error: {e}", file=sys.stderr)

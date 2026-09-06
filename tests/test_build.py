@@ -82,6 +82,29 @@ def test_saved_context_records_final_suite_path(package_repo, tmp_path, write_re
     assert ctx.suite_context_name == "a"
 
 
+CONFLICT = """\
+name: demo
+contexts:
+  a:
+    requires: [foo]
+  b:
+    requires: [foo]
+"""
+
+
+def test_conflicting_tools_trigger_one_warning_and_still_build(
+    package_repo, tmp_path, write_recipe
+):
+    recipe = load_recipe(write_recipe(tmp_path / "r", CONFLICT))
+    store = SuiteStore(tmp_path / "root")
+    warnings = []
+    path = build_suite(recipe, store, on_warning=warnings.append)
+    assert len(warnings) == 1
+    assert "foo" in warnings[0]
+    assert "foo-helper" in warnings[0]
+    assert path.is_dir()
+
+
 def test_build_suite_generates_build_id(package_repo, tmp_path, write_recipe):
     recipe = load_recipe(write_recipe(tmp_path / "r", GOOD))
     store = SuiteStore(tmp_path / "root")

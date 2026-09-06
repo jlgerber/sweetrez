@@ -22,6 +22,14 @@ contexts:
   x:
     requires: [foo-9+]
 """
+RECIPE_CONFLICT = """\
+name: gamma
+contexts:
+  a:
+    requires: [foo]
+  b:
+    requires: [foo]
+"""
 
 
 @pytest.fixture
@@ -85,6 +93,13 @@ def test_diff_against_non_suite_directory_is_clean_error(env, capsys):
     captured = capsys.readouterr()
     assert captured.out == ""
     assert "error:" in captured.err
+
+
+def test_build_warns_on_conflicting_tools(env, write_recipe, capsys):
+    write_recipe(env.recipes, RECIPE_CONFLICT, "gamma.yaml")
+    assert env.run("build", "gamma") == 0
+    captured = capsys.readouterr()
+    assert "warning: gamma: conflicting tools hidden: foo, foo-helper" in captured.err
 
 
 def test_build_requires_name_or_all(env):

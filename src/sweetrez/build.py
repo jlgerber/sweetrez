@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from rez.exceptions import RezError, SuiteError
 from rez.resolved_context import ResolvedContext
@@ -75,9 +76,17 @@ def assemble_suite(recipe: Recipe, contexts: dict[str, ResolvedContext]) -> Suit
     return suite
 
 
-def build_suite(recipe: Recipe, store: SuiteStore, build_id: str | None = None) -> Path:
+def build_suite(
+    recipe: Recipe,
+    store: SuiteStore,
+    build_id: str | None = None,
+    on_warning: Callable[[str], None] | None = None,
+) -> Path:
     contexts = resolve_contexts(recipe)
     suite = assemble_suite(recipe, contexts)
+    conflicts = suite.get_conflicting_aliases()
+    if conflicts and on_warning:
+        on_warning(f"{recipe.name}: conflicting tools hidden: {', '.join(sorted(conflicts))}")
     build_id = build_id or new_build_id()
 
     def writer(path: Path) -> None:
