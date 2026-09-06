@@ -101,3 +101,9 @@ def test_load_recipes_duplicate_name_is_error(tmp_path):
 def test_load_recipes_missing_dir_is_error(tmp_path):
     with pytest.raises(RecipeError, match="not found"):
         load_recipes(tmp_path / "nope")
+
+
+def test_name_with_trailing_newline_is_rejected(tmp_path):
+    body = "name: |\n  lighting\ncontexts:\n  x:\n    requires: [foo]\n"
+    with pytest.raises(RecipeError, match="name"):
+        load_recipe(_write(tmp_path, body))

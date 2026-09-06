@@ -87,7 +87,7 @@ def load_recipe(path: Path) -> Recipe:
     if unknown:
         raise RecipeError(f"{where}: unknown keys: {', '.join(sorted(unknown))}")
     name = data.get("name")
-    if not isinstance(name, str) or not NAME_RE.match(name):
+    if not isinstance(name, str) or not NAME_RE.fullmatch(name):
         raise RecipeError(f"{where}: 'name' is required and must match {NAME_RE.pattern}")
     description = _str(data.get("description", ""), where, "description")
     contexts = data.get("contexts")
