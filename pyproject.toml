@@ -20,3 +20,6 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore:the load_module\\(\\) method is deprecated:DeprecationWarning",
+]
