@@ -57,7 +57,10 @@ sweetrez diff lighting 2026-09-01T09-00-00 2026-09-06T14-32-10
 ```
 
 `build` never touches `current`. Activate a suite by putting
-`<root>/<name>/current/bin` on your `PATH`.
+`<root>/<name>/current/bin` on your `PATH`. rez's own `/opt/rez/bin/rez`
+directory must also be on `PATH`, because the wrapper scripts in `bin/`
+start with `#!/usr/bin/env _rez_fwd`, which resolves through that
+directory.
 
 ## Layout
 
