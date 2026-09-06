@@ -47,6 +47,8 @@ def _parse_context(name: str, data, where: str) -> ContextSpec:
     where = f"{where}: context '{name}'"
     if not isinstance(name, str) or not name:
         raise RecipeError(f"{where}: context names must be non-empty strings")
+    if not NAME_RE.fullmatch(name):
+        raise RecipeError(f"{where}: context names must match {NAME_RE.pattern}")
     if not isinstance(data, dict):
         raise RecipeError(f"{where}: must be a mapping with a 'requires' list")
     unknown = set(data) - _CONTEXT_KEYS

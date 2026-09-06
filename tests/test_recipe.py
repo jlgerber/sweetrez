@@ -107,3 +107,9 @@ def test_name_with_trailing_newline_is_rejected(tmp_path):
     body = "name: |\n  lighting\ncontexts:\n  x:\n    requires: [foo]\n"
     with pytest.raises(RecipeError, match="name"):
         load_recipe(_write(tmp_path, body))
+
+
+def test_context_name_with_path_separator_is_rejected(tmp_path):
+    body = "name: a\ncontexts:\n  sub/dir:\n    requires: [foo]\n"
+    with pytest.raises(RecipeError, match="context names"):
+        load_recipe(_write(tmp_path, body))
