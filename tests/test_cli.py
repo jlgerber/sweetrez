@@ -108,6 +108,12 @@ def test_build_requires_name_or_all(env):
     assert info.value.code == 2
 
 
+def test_build_name_and_all_together_is_error(env):
+    with pytest.raises(SystemExit) as info:
+        env.run("build", "alpha", "--all")
+    assert info.value.code == 2
+
+
 def test_promote_and_list(env, capsys):
     env.run("build", "alpha")
     first = capsys.readouterr().out.split()[2]

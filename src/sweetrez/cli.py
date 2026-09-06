@@ -128,6 +128,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "build" and not args.names and not args.all:
         parser.error("build requires NAME... or --all")
+    if args.command == "build" and args.names and args.all:
+        parser.error("build takes NAME... or --all, not both")
     try:
         cfg = load_config(args.config)
         return _COMMANDS[args.command](cfg, args)
