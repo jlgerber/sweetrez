@@ -8,7 +8,14 @@ new package versions inside the requested ranges.
 ## Install
 
 sweetrez uses the rez Python API. The rez venv at `/opt/rez` is root-owned,
-so sweetrez lives in its own venv that can see rez through a `.pth` file:
+so sweetrez lives in its own venv that can see rez through a `.pth` file.
+With [just](https://github.com/casey/just) installed, one command does it all:
+
+```bash
+just install    # creates .venv, installs sweetrez, symlinks it into ~/.local/bin
+```
+
+Or by hand:
 
 ```bash
 /usr/bin/python3.14 -m venv .venv
