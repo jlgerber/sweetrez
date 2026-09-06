@@ -40,3 +40,10 @@ def test_unknown_key_is_config_error(tmp_path):
     conf.write_text("root: /a\nrecipe_dir: /b\nbogus: 1\n")
     with pytest.raises(ConfigError, match="bogus"):
         load_config(conf)
+
+
+def test_invalid_yaml_is_config_error(tmp_path):
+    conf = tmp_path / "conf.yaml"
+    conf.write_text("root: [1, 2\n")
+    with pytest.raises(ConfigError, match="invalid YAML"):
+        load_config(conf)
