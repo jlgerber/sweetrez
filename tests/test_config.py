@@ -14,6 +14,15 @@ def test_loads_root_and_recipe_dir(tmp_path):
     assert cfg.recipe_dir == Path("/srv/recipes")
 
 
+def test_relative_paths_resolve_against_cwd(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    conf = tmp_path / "conf.yaml"
+    conf.write_text("root: relroot\nrecipe_dir: relrecipes\n")
+    cfg = load_config(conf)
+    assert cfg.root == Path.cwd() / "relroot"
+    assert cfg.recipe_dir == Path.cwd() / "relrecipes"
+
+
 def test_expands_user_in_paths(tmp_path):
     conf = tmp_path / "conf.yaml"
     conf.write_text("root: ~/suites\nrecipe_dir: ~/recipes\n")

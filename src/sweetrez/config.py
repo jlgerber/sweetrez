@@ -35,5 +35,5 @@ def load_config(path: Path | None = None) -> Config:
         value = data.get(key)
         if not isinstance(value, str) or not value:
             raise ConfigError(f"{path}: '{key}' must be a non-empty path string")
-        values[key] = Path(value).expanduser()
+        values[key] = Path(value).expanduser().absolute()
     return Config(**values)
