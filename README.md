@@ -26,7 +26,8 @@ ln -s "$PWD/.venv/bin/sweetrez" ~/.local/bin/sweetrez
 
 ## Configure
 
-`~/.config/sweetrez/conf.yaml`:
+`just config` writes a default `~/.config/sweetrez/conf.yaml` if none exists
+and creates the recipe directory (`just install` runs it too). Edit to taste:
 
 ```yaml
 root: ~/suites          # suites are built here
