@@ -39,6 +39,10 @@ install: setup config
     ln -sfn "{{justfile_directory()}}/{{venv}}/bin/sweetrez" {{bin_dir}}/sweetrez
     @echo "installed -> {{bin_dir}}/sweetrez"
 
+# Create a recipe template named NAME in the configured recipe_dir, for you to edit.
+new name:
+    {{venv}}/bin/sweetrez new {{name}}
+
 # Remove the ~/.local/bin symlink (leaves the venv alone).
 uninstall:
     rm -f {{bin_dir}}/sweetrez

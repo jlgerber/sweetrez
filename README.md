@@ -55,6 +55,7 @@ from their dependencies. That is a rez rule.
 ## Commands
 
 ```bash
+sweetrez new lighting          # write recipe_dir/lighting.yaml from a commented template
 sweetrez build lighting        # resolve every context; write nothing if any fails
 sweetrez build --all           # every recipe in recipe_dir (good for cron)
 sweetrez promote lighting      # point current -> newest build

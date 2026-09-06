@@ -11,7 +11,7 @@ from .build import build_suite
 from .config import Config, load_config
 from .diff import diff_versions, format_diff, resolved_versions
 from .errors import RecipeError, StoreError, SweetrezError
-from .recipe import Recipe, load_recipes
+from .recipe import Recipe, load_recipes, write_recipe_template
 from .store import SuiteStore
 
 
@@ -31,6 +31,9 @@ def _parser() -> argparse.ArgumentParser:
 
     ls = sub.add_parser("list", help="list suites and builds")
     ls.add_argument("name", nargs="?", metavar="NAME")
+
+    n = sub.add_parser("new", help="create a recipe template in recipe_dir for you to fill in")
+    n.add_argument("name", metavar="NAME")
 
     d = sub.add_parser("diff", help="diff resolved package versions between two builds")
     d.add_argument("name", metavar="NAME")
@@ -121,7 +124,19 @@ def cmd_diff(cfg: Config, args) -> int:
     return 0
 
 
-_COMMANDS = {"build": cmd_build, "promote": cmd_promote, "list": cmd_list, "diff": cmd_diff}
+def cmd_new(cfg: Config, args) -> int:
+    path = write_recipe_template(cfg.recipe_dir, args.name)
+    print(f"created {path}")
+    return 0
+
+
+_COMMANDS = {
+    "build": cmd_build,
+    "promote": cmd_promote,
+    "list": cmd_list,
+    "diff": cmd_diff,
+    "new": cmd_new,
+}
 
 
 def main(argv: list[str] | None = None) -> int:

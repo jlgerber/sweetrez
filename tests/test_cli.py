@@ -182,3 +182,22 @@ def test_diff_without_promoted(env, capsys):
 def test_missing_config(tmp_path, capsys):
     assert main(["--config", str(tmp_path / "none.yaml"), "list"]) == 1
     assert "not found" in capsys.readouterr().err
+
+
+def test_new_writes_template_into_recipe_dir(env, capsys):
+    assert env.run("new", "gamma") == 0
+    path = env.recipes / "gamma.yaml"
+    assert capsys.readouterr().out == f"created {path}\n"
+    assert path.is_file()
+    assert env.run("list") == 0  # the template parses; nothing built yet
+
+
+def test_new_refuses_existing_recipe(env, capsys):
+    assert env.run("new", "alpha") == 1
+    assert "exists" in capsys.readouterr().err
+    assert env.recipes.joinpath("alpha.yaml").read_text() == RECIPE_A
+
+
+def test_new_rejects_bad_name(env, capsys):
+    assert env.run("new", "current") == 1
+    assert "reserved" in capsys.readouterr().err

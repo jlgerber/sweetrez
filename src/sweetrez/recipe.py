@@ -31,6 +31,16 @@ class Recipe:
     source_path: Path
 
 
+RESERVED_NAMES = frozenset({"current"})
+
+
+def _validate_name(name, where: str) -> None:
+    if not isinstance(name, str) or not NAME_RE.fullmatch(name):
+        raise RecipeError(f"{where}: 'name' is required and must match {NAME_RE.pattern}")
+    if name in RESERVED_NAMES:
+        raise RecipeError(f"{where}: {name!r} is a reserved name")
+
+
 def _str_list(value, where: str, key: str) -> tuple[str, ...]:
     if not isinstance(value, list) or not all(isinstance(v, str) and v for v in value):
         raise RecipeError(f"{where}: '{key}' must be a list of non-empty strings")
@@ -89,10 +99,7 @@ def load_recipe(path: Path) -> Recipe:
     if unknown:
         raise RecipeError(f"{where}: unknown keys: {', '.join(sorted(unknown))}")
     name = data.get("name")
-    if not isinstance(name, str) or not NAME_RE.fullmatch(name):
-        raise RecipeError(f"{where}: 'name' is required and must match {NAME_RE.pattern}")
-    if name == "current":
-        raise RecipeError(f"{where}: 'current' is a reserved name")
+    _validate_name(name, where)
     description = _str(data.get("description", ""), where, "description")
     contexts = data.get("contexts")
     if not isinstance(contexts, dict) or not contexts:
@@ -116,3 +123,35 @@ def load_recipes(recipe_dir: Path) -> dict[str, Recipe]:
             )
         recipes[recipe.name] = recipe
     return recipes
+
+
+RECIPE_TEMPLATE = """\
+# sweetrez recipe: {name}
+#
+# Every context below is resolved by rez on each `sweetrez build`, so
+# `requires` entries may be version ranges (foo-1.2+, bar-3, baz==2.0.1).
+# Suites land in <root>/{name}/<timestamp>/; `sweetrez promote {name}`
+# points the `current` symlink at one of them.
+name: {name}
+description: ""
+contexts:
+  # Rename this context and replace its request list. Add more as needed.
+  main:
+    requires: [some-package]
+    # prefix: ""             # prepended to every tool name from this context
+    # suffix: ""             # appended to every tool name from this context
+    # alias: {{tool: alias}}   # rename individual tools (requested packages only)
+    # hide: [tool]           # do not expose these tools in the suite
+"""
+
+
+def write_recipe_template(recipe_dir: Path, name: str) -> Path:
+    """Create ``<recipe_dir>/<name>.yaml`` from the template; refuse to overwrite."""
+    _validate_name(name, f"new recipe {name!r}")
+    recipe_dir = Path(recipe_dir)
+    path = recipe_dir / f"{name}.yaml"
+    if path.exists() or path.with_suffix(".yml").exists():
+        raise RecipeError(f"recipe already exists: {path}")
+    recipe_dir.mkdir(parents=True, exist_ok=True)
+    path.write_text(RECIPE_TEMPLATE.format(name=name))
+    return path

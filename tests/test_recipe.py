@@ -119,3 +119,33 @@ def test_recipe_named_current_is_rejected(tmp_path):
     body = "name: current\ncontexts:\n  x:\n    requires: [foo]\n"
     with pytest.raises(RecipeError, match="reserved"):
         load_recipe(_write(tmp_path, body))
+
+
+def test_write_recipe_template_creates_loadable_recipe(tmp_path):
+    from sweetrez.recipe import write_recipe_template
+
+    path = write_recipe_template(tmp_path / "recipes", "lighting")
+    assert path == tmp_path / "recipes" / "lighting.yaml"
+    recipe = load_recipe(path)
+    assert recipe.name == "lighting"
+    assert len(recipe.contexts) == 1
+    assert "#" in path.read_text()  # guidance comments for the user
+
+
+def test_write_recipe_template_refuses_to_overwrite(tmp_path):
+    from sweetrez.recipe import write_recipe_template
+
+    path = write_recipe_template(tmp_path, "a")
+    path.write_text("name: a\ncontexts:\n  x:\n    requires: [foo]\n")
+    with pytest.raises(RecipeError, match="exists"):
+        write_recipe_template(tmp_path, "a")
+    assert "x:" in path.read_text()
+
+
+@pytest.mark.parametrize("name", ["bad name", "current", "-x", ""])
+def test_write_recipe_template_validates_name(tmp_path, name):
+    from sweetrez.recipe import write_recipe_template
+
+    with pytest.raises(RecipeError):
+        write_recipe_template(tmp_path, name)
+    assert not list(tmp_path.iterdir())
