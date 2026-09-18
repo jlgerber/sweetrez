@@ -20,7 +20,7 @@ With [just](https://github.com/casey/just) installed:
 ```bash
 just install        # dev venv + default config, then rez-build --install
 just rez-install    # just the rez package, into local_packages_path
-rez-env sweetrez -- sweetrez list
+rez-env sweetrez -- sweetrez list -s -b
 ```
 
 The package's version comes from `pyproject.toml`. `rez-test sweetrez` runs a
@@ -82,7 +82,9 @@ sweetrez build lighting        # resolve every context; write nothing if any fai
 sweetrez build --all           # every recipe in recipe_dir (good for cron)
 sweetrez promote lighting      # point current -> newest build
 sweetrez promote lighting 2026-09-01T09-00-00   # roll back
-sweetrez list                  # suites, builds, promoted marked with *
+sweetrez list -s -b            # suites and builds, promoted marked with *
+sweetrez list -s               # suite names only
+sweetrez list -r               # recipes in recipe_dir (built or not)
 sweetrez diff lighting         # promoted vs newest, resolved versions only
 sweetrez diff lighting 2026-09-01T09-00-00 2026-09-06T14-32-10
 sweetrez contents lighting     # promoted build: packages per context
