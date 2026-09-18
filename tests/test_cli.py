@@ -220,3 +220,35 @@ def test_build_lists_default_args_per_tool(env, write_recipe, capsys):
     out = capsys.readouterr().out.splitlines()
     assert out[0].startswith("built delta ")
     assert out[1] == '  foo_d: default args --root "$HOME"/books'
+
+
+def test_contents_defaults_to_promoted_package_tree(env, capsys):
+    assert env.run("build", "beta") == 0
+    assert env.run("promote", "beta") == 0
+    capsys.readouterr()
+    assert env.run("contents", "beta") == 0
+    assert capsys.readouterr().out == "b\n    bar-2.0.0\n    foo-1.0.0\n"
+
+
+def test_contents_explicit_build_with_combined_flags(env, capsys):
+    assert env.run("build", "beta") == 0
+    build_id = capsys.readouterr().out.split()[2]
+    assert env.run("contents", "beta", build_id, "--wrappers", "--contexts") == 0
+    assert capsys.readouterr().out == (
+        "contexts:\n"
+        "    b\n"
+        "wrappers:\n"
+        "    bar  (b: bar)\n"
+    )
+
+
+def test_contents_without_promoted(env, capsys):
+    assert env.run("build", "beta") == 0
+    assert env.run("contents", "beta") == 1
+    assert "nothing promoted; pass BUILD_ID explicitly" in capsys.readouterr().err
+
+
+def test_contents_unknown_build(env, capsys):
+    assert env.run("build", "beta") == 0
+    assert env.run("contents", "beta", "2000-01-01T00-00-00") == 1
+    assert "no such build" in capsys.readouterr().err
