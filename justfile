@@ -3,6 +3,7 @@
 venv := ".venv"
 python := venv / "bin/python"
 rez_site := "/opt/rez/lib/python3.14/site-packages"
+rez_bin := "/opt/rez/bin/rez"
 bin_dir := env("HOME") / ".local/bin"
 conf_dir := env("HOME") / ".config/sweetrez"
 conf := conf_dir / "conf.yaml"
@@ -33,17 +34,18 @@ config:
     recipe_dir="{{default_recipe_dir}}"
     mkdir -p "${recipe_dir/#\~/$HOME}"
 
-# Install: run setup and config, then symlink the sweetrez command into ~/.local/bin.
-install: setup config
-    mkdir -p {{bin_dir}}
-    ln -sfn "{{justfile_directory()}}/{{venv}}/bin/sweetrez" {{bin_dir}}/sweetrez
-    @echo "installed -> {{bin_dir}}/sweetrez"
+# Build the sweetrez rez package and install it into rez's local_packages_path.
+rez-install:
+    {{rez_bin}}/rez-build --install
+
+# Install: set up the dev venv and config, then install the rez package. Use it with `rez-env sweetrez`.
+install: setup config rez-install
 
 # Create a recipe template named NAME in the configured recipe_dir, for you to edit.
 new name:
     {{venv}}/bin/sweetrez new {{name}}
 
-# Remove the ~/.local/bin symlink (leaves the venv alone).
+# Remove the ~/.local/bin symlink left by older installs (the rez package and venv stay).
 uninstall:
     rm -f {{bin_dir}}/sweetrez
 
