@@ -7,22 +7,28 @@ new package versions inside the requested ranges.
 
 ## Install
 
-sweetrez uses the rez Python API. The rez venv at `/opt/rez` is root-owned,
-so sweetrez lives in its own venv that can see rez through a `.pth` file.
-With [just](https://github.com/casey/just) installed, one command does it all:
+sweetrez is a rez package. It needs `python-3.9+`, `rez-3`, and `PyYAML-6`
+to resolve:
+
+- `rez`: from `rez-bind rez`. The bound package may pin `python-...<3.14`;
+  loosen that to `python-3.8+` if your Python is newer.
+- `PyYAML`: `rez-pip --install pyyaml`. PyYAML is compiled, so repeat this on
+  each machine with a different Python.
+
+With [just](https://github.com/casey/just) installed:
 
 ```bash
-just install    # creates .venv, installs sweetrez, symlinks it into ~/.local/bin
+just install        # dev venv + default config, then rez-build --install
+just rez-install    # just the rez package, into local_packages_path
+rez-env sweetrez -- sweetrez list
 ```
 
-Or by hand:
+The package's version comes from `pyproject.toml`. `rez-test sweetrez` runs a
+smoke test.
 
-```bash
-/usr/bin/python3.14 -m venv .venv
-echo /opt/rez/lib/python3.14/site-packages > .venv/lib/python3.14/site-packages/rez.pth
-.venv/bin/pip install -e '.[dev]'
-ln -s "$PWD/.venv/bin/sweetrez" ~/.local/bin/sweetrez
-```
+For development, `just setup` makes `.venv`, which sees rez through a `.pth`
+file (the rez venv at `/opt/rez` is root-owned) and has sweetrez installed
+editable. `just test` runs the tests there.
 
 ## Configure
 
