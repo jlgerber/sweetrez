@@ -30,8 +30,13 @@ def _parser() -> argparse.ArgumentParser:
     pr.add_argument("name", metavar="NAME")
     pr.add_argument("build_id", nargs="?", metavar="BUILD_ID")
 
-    ls = sub.add_parser("list", help="list suites and builds")
-    ls.add_argument("name", nargs="?", metavar="NAME")
+    ls = sub.add_parser("list", help="list suites, builds, or recipes")
+    ls.add_argument("name", nargs="?", metavar="NAME", help="limit the listing to one suite or recipe")
+    ls.add_argument("-s", "--suites", action="store_true", help="list suite names")
+    ls.add_argument("-b", "--builds", action="store_true",
+                    help="list each suite's builds, promoted marked with *")
+    ls.add_argument("-r", "--recipes", action="store_true", help="list recipes in recipe_dir")
+    ls.set_defaults(subparser=ls)
 
     n = sub.add_parser("new", help="create a recipe template in recipe_dir for you to fill in")
     n.add_argument("name", metavar="NAME")
@@ -94,10 +99,12 @@ def cmd_promote(cfg: Config, args) -> int:
     return 0
 
 
-def _print_suite(store: SuiteStore, name: str) -> None:
+def _print_suite(store: SuiteStore, name: str, with_builds: bool) -> None:
+    print(name)
+    if not with_builds:
+        return
     builds = store.builds(name)
     promoted = store.promoted(name)
-    print(name)
     if not builds:
         print("  (no builds)")
     for build_id in builds:
@@ -105,14 +112,26 @@ def _print_suite(store: SuiteStore, name: str) -> None:
 
 
 def cmd_list(cfg: Config, args) -> int:
-    store = SuiteStore(cfg.root)
-    if args.name:
-        if not store.suite_dir(args.name).is_dir():
-            raise StoreError(f"no such suite: {args.name}")
-        _print_suite(store, args.name)
-    else:
-        for name in store.suites():
-            _print_suite(store, name)
+    # Builds only make sense grouped under their suite, so -b implies -s.
+    if args.suites or args.builds:
+        store = SuiteStore(cfg.root)
+        if args.name:
+            if not store.suite_dir(args.name).is_dir():
+                raise StoreError(f"no such suite: {args.name}")
+            names = [args.name]
+        else:
+            names = store.suites()
+        for name in names:
+            _print_suite(store, name, args.builds)
+    if args.recipes:
+        names = sorted(load_recipes(cfg.recipe_dir))
+        if args.name:
+            if args.name not in names:
+                raise RecipeError(f"no recipe named {args.name} in {cfg.recipe_dir}")
+            names = [args.name]
+        print("recipes:")
+        for name in names:
+            print(f"    {name}")
     return 0
 
 
@@ -173,6 +192,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("build requires NAME... or --all")
     if args.command == "build" and args.names and args.all:
         parser.error("build takes NAME... or --all, not both")
+    if args.command == "list" and not (args.suites or args.builds or args.recipes):
+        args.subparser.error("list requires one or more of -s/--suites, -b/--builds, -r/--recipes")
     try:
         cfg = load_config(args.config)
         return _COMMANDS[args.command](cfg, args)

@@ -125,17 +125,59 @@ def test_promote_and_list(env, capsys):
     first = capsys.readouterr().out.split()[2]
     assert env.run("promote", "alpha") == 0
     assert capsys.readouterr().out == f"promoted alpha -> {first}\n"
-    assert env.run("list") == 0
+    assert env.run("list", "-s", "-b") == 0
     assert capsys.readouterr().out == f"alpha\n  {first} *\n"
     env.run("build", "beta")
     capsys.readouterr()
-    assert env.run("list", "beta") == 0
+    assert env.run("list", "beta", "-s", "-b") == 0
     out = capsys.readouterr().out
     assert out.startswith("beta\n  ") and not out.rstrip().endswith("*")
 
 
 def test_list_unknown_suite(env, capsys):
-    assert env.run("list", "ghost") == 1
+    assert env.run("list", "ghost", "-s") == 1
+    assert "ghost" in capsys.readouterr().err
+
+
+def test_list_requires_a_flag(env, capsys):
+    with pytest.raises(SystemExit) as info:
+        env.run("list")
+    assert info.value.code == 2
+    err = capsys.readouterr().err
+    assert "--suites" in err and "--builds" in err and "--recipes" in err
+
+
+def test_list_suites_only_shows_names(env, capsys):
+    env.run("build", "alpha")
+    env.run("build", "beta")
+    capsys.readouterr()
+    assert env.run("list", "-s") == 0
+    assert capsys.readouterr().out == "alpha\nbeta\n"
+
+
+def test_list_builds_alone_groups_by_suite(env, capsys):
+    env.run("build", "alpha")
+    first = capsys.readouterr().out.split()[2]
+    assert env.run("list", "-b") == 0
+    assert capsys.readouterr().out == f"alpha\n  {first}\n"
+
+
+def test_list_recipes_includes_unbuilt(env, capsys):
+    assert env.run("list", "--recipes") == 0
+    assert capsys.readouterr().out == "recipes:\n    alpha\n    beta\n"
+
+
+def test_list_suites_and_recipes(env, capsys):
+    env.run("build", "alpha")
+    capsys.readouterr()
+    assert env.run("list", "-s", "-r") == 0
+    assert capsys.readouterr().out == "alpha\nrecipes:\n    alpha\n    beta\n"
+
+
+def test_list_named_recipe(env, capsys):
+    assert env.run("list", "beta", "-r") == 0
+    assert capsys.readouterr().out == "recipes:\n    beta\n"
+    assert env.run("list", "ghost", "-r") == 1
     assert "ghost" in capsys.readouterr().err
 
 
@@ -148,7 +190,7 @@ def test_promote_specific_build(env, capsys):
     assert first != second
     assert env.run("promote", "alpha", first) == 0
     assert capsys.readouterr().out == f"promoted alpha -> {first}\n"
-    env.run("list", "alpha")
+    env.run("list", "alpha", "--suites", "--builds")
     assert capsys.readouterr().out == f"alpha\n  {first} *\n  {second}\n"
 
 
@@ -180,7 +222,7 @@ def test_diff_without_promoted(env, capsys):
 
 
 def test_missing_config(tmp_path, capsys):
-    assert main(["--config", str(tmp_path / "none.yaml"), "list"]) == 1
+    assert main(["--config", str(tmp_path / "none.yaml"), "list", "-s"]) == 1
     assert "not found" in capsys.readouterr().err
 
 
@@ -189,7 +231,8 @@ def test_new_writes_template_into_recipe_dir(env, capsys):
     path = env.recipes / "gamma.yaml"
     assert capsys.readouterr().out == f"created {path}\n"
     assert path.is_file()
-    assert env.run("list") == 0  # the template parses; nothing built yet
+    assert env.run("list", "-r") == 0  # the template parses; nothing built yet
+    assert capsys.readouterr().out == "recipes:\n    alpha\n    beta\n    gamma\n"
 
 
 def test_new_refuses_existing_recipe(env, capsys):
