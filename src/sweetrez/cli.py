@@ -44,10 +44,10 @@ def _parser() -> argparse.ArgumentParser:
     c = sub.add_parser("contents", help="list a build's contexts, packages, or wrappers")
     c.add_argument("name", metavar="NAME")
     c.add_argument("build_id", nargs="?", metavar="BUILD_ID", help="defaults to the promoted build")
-    c.add_argument("--contexts", action="store_true", help="list context names")
-    c.add_argument("--packages", action="store_true",
+    c.add_argument("-c", "--contexts", action="store_true", help="list context names")
+    c.add_argument("-p", "--packages", action="store_true",
                    help="list resolved packages under each context (the default)")
-    c.add_argument("--wrappers", action="store_true", help="list the tools in bin/ and where they come from")
+    c.add_argument("-w", "--wrappers", action="store_true", help="list the tools in bin/ and where they come from")
     return p
 
 

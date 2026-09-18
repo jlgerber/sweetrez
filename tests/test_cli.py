@@ -252,3 +252,14 @@ def test_contents_unknown_build(env, capsys):
     assert env.run("build", "beta") == 0
     assert env.run("contents", "beta", "2000-01-01T00-00-00") == 1
     assert "no such build" in capsys.readouterr().err
+
+
+def test_contents_short_flags(env, capsys):
+    assert env.run("build", "beta") == 0
+    build_id = capsys.readouterr().out.split()[2]
+    assert env.run("contents", "beta", build_id, "-c", "-w") == 0
+    long_out = capsys.readouterr().out
+    assert env.run("contents", "beta", build_id, "--contexts", "--wrappers") == 0
+    assert long_out == capsys.readouterr().out
+    assert env.run("contents", "beta", build_id, "-p") == 0
+    assert capsys.readouterr().out == "b\n    bar-2.0.0\n    foo-1.0.0\n"
