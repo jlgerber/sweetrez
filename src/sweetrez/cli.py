@@ -9,6 +9,7 @@ from rez.exceptions import RezError
 from . import __version__
 from .build import build_suite
 from .config import Config, load_config
+from .contents import CONTEXTS, PACKAGES, WRAPPERS, format_contents, load_contents
 from .diff import diff_versions, format_diff, resolved_versions
 from .errors import RecipeError, StoreError, SweetrezError
 from .recipe import Recipe, load_recipes, write_recipe_template
@@ -39,6 +40,14 @@ def _parser() -> argparse.ArgumentParser:
     d.add_argument("name", metavar="NAME")
     d.add_argument("old", nargs="?", metavar="OLD")
     d.add_argument("new", nargs="?", metavar="NEW")
+
+    c = sub.add_parser("contents", help="list a build's contexts, packages, or wrappers")
+    c.add_argument("name", metavar="NAME")
+    c.add_argument("build_id", nargs="?", metavar="BUILD_ID", help="defaults to the promoted build")
+    c.add_argument("-c", "--contexts", action="store_true", help="list context names")
+    c.add_argument("-p", "--packages", action="store_true",
+                   help="list resolved packages under each context (the default)")
+    c.add_argument("-w", "--wrappers", action="store_true", help="list the tools in bin/ and where they come from")
     return p
 
 
@@ -128,6 +137,19 @@ def cmd_diff(cfg: Config, args) -> int:
     return 0
 
 
+def cmd_contents(cfg: Config, args) -> int:
+    store = SuiteStore(cfg.root)
+    build_id = args.build_id
+    if build_id is None:
+        build_id = store.promoted(args.name)
+        if build_id is None:
+            raise StoreError(f"{args.name}: nothing promoted; pass BUILD_ID explicitly")
+    flags = {CONTEXTS: args.contexts, PACKAGES: args.packages, WRAPPERS: args.wrappers}
+    sections = [s for s, on in flags.items() if on] or [PACKAGES]
+    print(format_contents(load_contents(store.build_path(args.name, build_id)), sections))
+    return 0
+
+
 def cmd_new(cfg: Config, args) -> int:
     path = write_recipe_template(cfg.recipe_dir, args.name)
     print(f"created {path}")
@@ -140,6 +162,7 @@ _COMMANDS = {
     "list": cmd_list,
     "diff": cmd_diff,
     "new": cmd_new,
+    "contents": cmd_contents,
 }
 
 

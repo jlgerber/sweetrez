@@ -79,6 +79,8 @@ sweetrez promote lighting 2026-09-01T09-00-00   # roll back
 sweetrez list                  # suites, builds, promoted marked with *
 sweetrez diff lighting         # promoted vs newest, resolved versions only
 sweetrez diff lighting 2026-09-01T09-00-00 2026-09-06T14-32-10
+sweetrez contents lighting     # promoted build: packages per context
+sweetrez contents lighting 2026-09-01T09-00-00 -c -w   # or --contexts --wrappers
 ```
 
 `build` never touches `current`. Activate a suite by putting

@@ -17,7 +17,10 @@ class Change:
 
 
 def resolved_versions(build_path: Path) -> Versions:
-    suite = Suite.load(str(build_path))
+    return suite_versions(Suite.load(str(build_path)))
+
+
+def suite_versions(suite: Suite) -> Versions:
     result: Versions = {}
     for name in suite.context_names:
         ctx = suite.context(name)
