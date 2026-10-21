@@ -80,6 +80,7 @@ sweetrez: exec /home/me/suites/lookdev/current/bin/../.rez-wrappers/usdview --re
 sweetrez new lighting          # write recipe_dir/lighting.yaml from a commented template
 sweetrez build lighting        # resolve every context; write nothing if any fails
 sweetrez build --all           # every recipe in recipe_dir (good for cron)
+sweetrez build -p lighting     # build, then promote that build (--promote)
 sweetrez promote lighting      # point current -> newest build
 sweetrez promote lighting 2026-09-01T09-00-00   # roll back
 sweetrez list -s -b            # suites and builds, promoted marked with *
@@ -91,7 +92,9 @@ sweetrez contents lighting     # promoted build: packages per context
 sweetrez contents lighting 2026-09-01T09-00-00 -c -w   # or --contexts --wrappers
 ```
 
-`build` never touches `current`. Activate a suite by putting
+`build` never touches `current` unless you pass `-p`/`--promote`, which
+promotes each build as soon as it is written; a recipe that fails to build
+keeps its current promotion. Activate a suite by putting
 `<root>/<name>/current/bin` on your `PATH`. rez's own `/opt/rez/bin/rez`
 directory must also be on `PATH`, because the wrapper scripts in `bin/`
 start with `#!/usr/bin/env _rez_fwd`, which resolves through that

@@ -25,6 +25,8 @@ def _parser() -> argparse.ArgumentParser:
     b = sub.add_parser("build", help="resolve a recipe and write a new build")
     b.add_argument("names", nargs="*", metavar="NAME")
     b.add_argument("--all", action="store_true", help="build every recipe in recipe_dir")
+    b.add_argument("-p", "--promote", action="store_true",
+                   help="point 'current' at each new build once it is written")
 
     pr = sub.add_parser("promote", help="point 'current' at a build")
     pr.add_argument("name", metavar="NAME")
@@ -89,6 +91,16 @@ def cmd_build(cfg: Config, args) -> int:
         print(f"built {recipe.name} {path.name} -> {path}")
         for note in notes:
             print(f"  {note}")
+        if args.promote:
+            # The build just written, not the newest: they differ if another
+            # build of this suite lands meanwhile.
+            try:
+                store.promote(recipe.name, path.name)
+            except (SweetrezError, OSError) as e:
+                failed = True
+                print(f"error: {e}", file=sys.stderr)
+                continue
+            print(f"promoted {recipe.name} -> {path.name}")
     return 1 if failed else 0
 
 

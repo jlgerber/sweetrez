@@ -56,6 +56,23 @@ def test_build_one(env, capsys):
     assert not (env.root / "alpha" / "current").exists()
 
 
+def test_build_promote_points_current_at_the_new_build(env, capsys):
+    assert env.run("build", "alpha", "-p") == 0
+    out = capsys.readouterr().out
+    build_id = out.split()[2]
+    assert f"promoted alpha -> {build_id}\n" in out
+    assert os.readlink(env.root / "alpha" / "current") == build_id
+
+
+def test_build_promote_skips_a_failed_build(env, write_recipe, capsys):
+    write_recipe(env.recipes, RECIPE_BAD, "broken.yaml")
+    assert env.run("build", "--all", "--promote") == 1
+    out = capsys.readouterr().out
+    assert "promoted alpha -> " in out and "promoted beta -> " in out
+    assert "promoted broken" not in out
+    assert not (env.root / "broken").exists()
+
+
 def test_build_duplicate_name_is_deduped(env, capsys):
     assert env.run("build", "alpha", "alpha") == 0
     out = capsys.readouterr().out
